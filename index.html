@@ -3,15 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Δ CAPITAL">
-    
     <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/e/ec/Regular_triangle.svg"> 
-    
     <title>Δ CAPITAL</title>
-    
     <style>
         :root { --gold: #d4af37; --bg-dark: #121212; --bg-card: #1e1e1e; --text: #eaeaea; --sub-text: #aaaaaa; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg-dark); color: var(--text); margin: 0; display: flex; justify-content: center; padding: 20px; box-sizing: border-box; min-height: 100vh; }
@@ -24,13 +20,13 @@
         button:disabled { opacity: 0.5; }
         .balance-label { font-size: 0.7em; letter-spacing: 3px; color: var(--sub-text); margin-top: 20px; }
         .balance { font-size: 4em; font-weight: 900; margin: 5px 0; color: #fff; letter-spacing: -2px; }
-        .hidden { display: none; }
+        .hidden { display: none !important; }
         .history-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #333; font-size: 0.85em; }
         .success { color: #51cf66; font-weight: bold; } 
         .error { color: #ff6b6b; font-weight: bold; }
         #msg { font-size: 0.8em; font-weight: bold; margin-top: 10px; }
-        /* Estilos Admin */
-        .admin-only { border: 1px dashed #51cf66 !important; background: #0f1a12 !important; margin-top: 10px; }
+        /* Estilo sutil para tus paneles admin */
+        .admin-box { border: 1px dashed #51cf66 !important; background: #0a0a0a !important; margin-top: 10px; padding: 20px; border-radius: 20px; }
     </style>
 </head>
 <body>
@@ -43,10 +39,17 @@
         <button onclick="login()">ENTRAR</button>
     </div>
 
-    <div class="box admin-only hidden" id="admin-panel">
-        <h4 style="color:#51cf66; margin:0 0 10px 0;">SISTEMA CENTRAL</h4>
-        <input type="number" id="admin-inject" placeholder="CANTIDAD Δ">
-        <button onclick="injectMoney()" style="background:#51cf66">INYECTAR CAPITAL</button>
+    <div id="admin-area" class="hidden">
+        <div class="box admin-box">
+            <h4 style="color:#51cf66; margin:0 0 10px 0; font-size:0.8em">GENERADOR DE Δ</h4>
+            <input type="number" id="admin-inject" placeholder="CANTIDAD">
+            <button onclick="injectMoney()" style="background:#51cf66; padding:10px">INYECTAR</button>
+        </div>
+        
+        <div class="box admin-box">
+            <h4 style="color:#51cf66; margin:0 0 10px 0; font-size:0.8em">MONITOR GLOBAL</h4>
+            <div id="market-list" style="text-align:left; font-size:0.7em; max-height:150px; overflow-y:auto"></div>
+        </div>
     </div>
 
     <div class="box hidden" id="main-box">
@@ -62,11 +65,6 @@
         <input type="number" id="amount" placeholder="CANTIDAD Δ">
         <button onclick="transferir()" id="btn-send">CONFIRMAR ENVÍO</button>
         <p id="msg"></p>
-    </div>
-
-    <div class="box admin-only hidden" id="market-box">
-        <h4 style="color:#51cf66; margin:0 0 10px 0; font-size:0.8em;">MONITOR DE MERCADO</h4>
-        <div id="market-list" style="text-align:left; font-size:0.7em;"></div>
     </div>
 
     <div class="box hidden" id="history-box" style="text-align:left">
@@ -102,21 +100,19 @@
         const userDoc = await db.collection("usuarios").doc(idEntrada).get();
         if (userDoc.exists) {
             myDocId = idEntrada;
-            const data = userDoc.data();
-            myPublicPin = data.pin;
+            myPublicPin = userDoc.data().pin;
             
             document.getElementById('login-box').classList.add('hidden');
             document.getElementById('main-box').classList.remove('hidden');
             document.getElementById('history-box').classList.remove('hidden');
             
-            // Lógica LS33
+            // Si es LS33, activamos el área admin
             if(idEntrada.toUpperCase() === "LS33") {
-                document.getElementById('admin-panel').classList.remove('hidden');
-                document.getElementById('market-box').classList.remove('hidden');
+                document.getElementById('admin-area').classList.remove('hidden');
                 cargarMarketGlobal();
             }
 
-            document.getElementById('user-name').innerText = data.nombre.toUpperCase();
+            document.getElementById('user-name').innerText = userDoc.data().nombre.toUpperCase();
             document.getElementById('public-id-display').innerText = "ID: " + myPublicPin;
             
             db.collection("usuarios").doc(myDocId).onSnapshot(doc => {
@@ -128,29 +124,27 @@
     } catch (e) { alert("ERROR DE CONEXIÓN"); }
   }
 
-  // PODER ADMIN: Inyectar
+  // PODER LS33: Inyectar capital
   async function injectMoney() {
       const cant = parseInt(document.getElementById('admin-inject').value);
       if(isNaN(cant)) return;
       const ref = db.collection("usuarios").doc(myDocId);
       const snap = await ref.get();
       await ref.update({ saldo: snap.data().saldo + cant });
-      alert("Inyectado: " + cant);
       document.getElementById('admin-inject').value = "";
+      alert("Inyectado!");
   }
 
-  // PODER ADMIN: Ver todo
+  // PODER LS33: Ver todo el mercado
   function cargarMarketGlobal() {
       db.collection("transferencias").limit(20).onSnapshot(snap => {
           const list = document.getElementById('market-list');
-          let items = [];
-          snap.forEach(doc => items.push(doc.data()));
-          items.sort((a,b) => b.fecha - a.fecha);
+          let m = [];
+          snap.forEach(doc => m.push(doc.data()));
+          m.sort((a,b) => b.fecha - a.fecha);
           list.innerHTML = "";
-          items.forEach(t => {
-              list.innerHTML += `<div style="border-bottom:1px solid #333; padding:5px 0;">
-                  ${t.de} -> ${t.para} | <b>${t.cantidad} Δ</b>
-              </div>`;
+          m.forEach(t => {
+              list.innerHTML += `<div style="border-bottom:1px solid #333; padding:4px 0;">${t.de}➔${t.para} | ${t.cantidad}Δ</div>`;
           });
       });
   }
@@ -159,75 +153,54 @@
     const targetPin = document.getElementById('dest-public-id').value.trim().toUpperCase();
     const cant = parseInt(document.getElementById('amount').value);
     const msg = document.getElementById('msg');
-    const btn = document.getElementById('btn-send');
-
     if (!targetPin || isNaN(cant) || cant <= 0) return;
-    btn.disabled = true;
+    
+    document.getElementById('btn-send').disabled = true;
     msg.innerText = "PROCESANDO...";
 
     try {
         const snapshot = await db.collection("usuarios").where("pin", "==", targetPin).get();
         if (snapshot.empty) throw "ID NO EXISTE";
-        
         const destDoc = snapshot.docs[0];
         const myRef = db.collection("usuarios").doc(myDocId);
 
         await db.runTransaction(async (t) => {
             const me = await t.get(myRef);
-            if (me.data().pin.toUpperCase() === targetPin) throw "OPERACIÓN NO PERMITIDA";
+            if (me.data().pin.toUpperCase() === targetPin) throw "ERROR";
             if (me.data().saldo < cant) throw "FONDOS INSUFICIENTES";
-            
             t.update(myRef, { saldo: me.data().saldo - cant });
             t.update(destDoc.ref, { saldo: destDoc.data().saldo + cant });
-            
             t.set(db.collection("transferencias").doc(), {
-                de: myPublicPin,
-                para: targetPin,
-                cantidad: cant,
-                fecha: Date.now()
+                de: myPublicPin, para: targetPin, cantidad: cant, fecha: Date.now()
             });
         });
-
         msg.className = "success";
         msg.innerText = "TRANSACCIÓN COMPLETADA";
-        document.getElementById('dest-public-id').value = "";
         document.getElementById('amount').value = "";
-    } catch (e) {
-        msg.className = "error";
-        msg.innerText = e;
-    } finally {
-        btn.disabled = false;
-        setTimeout(() => msg.innerText = "", 3000);
-    }
+    } catch (e) { msg.className = "error"; msg.innerText = e; }
+    finally { document.getElementById('btn-send').disabled = false; }
   }
 
   function cargarHistorial() {
     db.collection("transferencias").limit(30).onSnapshot(snap => {
         const list = document.getElementById('history-list');
         let misMovimientos = [];
-        
         snap.forEach(doc => {
             const t = doc.data();
-            if (t.de === myPublicPin || t.para === myPublicPin) {
-                misMovimientos.push(t);
-            }
+            if (t.de === myPublicPin || t.para === myPublicPin) misMovimientos.push(t);
         });
-
         misMovimientos.sort((a, b) => b.fecha - a.fecha);
-
         list.innerHTML = "";
         if (misMovimientos.length === 0) {
             list.innerHTML = '<p style="text-align:center; color:var(--sub-text); font-size:0.8em">SIN ACTIVIDAD.</p>';
             return;
         }
-
         misMovimientos.forEach(t => {
             const soyYo = t.de === myPublicPin;
-            list.innerHTML += `
-                <div class="history-item">
-                    <span>${soyYo ? 'A: ' + t.para : 'DE: ' + t.de}</span>
-                    <span class="${soyYo ? 'error' : 'success'}">${soyYo ? '-' : '+'}${t.cantidad} Δ</span>
-                </div>`;
+            list.innerHTML += `<div class="history-item">
+                <span>${soyYo ? 'A: ' + t.para : 'DE: ' + t.de}</span>
+                <span class="${soyYo ? 'error' : 'success'}">${soyYo ? '-' : '+'}${t.cantidad} Δ</span>
+            </div>`;
         });
     });
   }
