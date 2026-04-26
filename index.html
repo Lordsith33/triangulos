@@ -3,51 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="Banco Δ">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/590/590510.png"> 
-    <title>Banco Δ - Historial</title>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Δ Capital">
+    
+    <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/e/ec/Regular_triangle.svg"> 
+    
+    <title>Δ Capital - Triángulos Finanzas</title>
+    
     <style>
-        :root { --primary: #1a73e8; --bg: #f8f9fa; --text: #202124; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; display: flex; justify-content: center; padding: 20px; box-sizing: border-box; min-height: 100vh; }
-        .box { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); width: 100%; max-width: 380px; text-align: center; height: fit-content; }
-        input { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #e0e0e0; border-radius: 12px; box-sizing: border-box; font-size: 16px; outline: none; }
-        button { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 16px; }
-        .balance { font-size: 3em; color: var(--text); margin: 10px 0; font-weight: 800; }
-        .hidden { display: none; }
-        #msg { margin-top: 10px; font-weight: bold; font-size: 0.85em; }
-        .success { color: #1e8e3e; }
-        .error { color: #d93025; }
-        hr { border: 0; border-top: 1px solid #f1f1f1; margin: 20px 0; }
+        :root { --gold: #d4af37; --bg-dark: #121212; --bg-card: #1e1e1e; --text: #eaeaea; --sub-text: #aaaaaa; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg-dark); color: var(--text); margin: 0; display: flex; justify-content: center; align-items: start; min-height: 100vh; padding-top: 30px; }
+        .container { width: 90%; max-width: 400px; display: flex; flex-direction: column; gap: 20px; }
+        .box { background: var(--bg-card); padding: 30px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; border: 1px solid rgba(255,255,255,0.05); }
+        h2 { color: var(--gold); margin-top: 0; font-weight: 800; letter-spacing: -0.5px; }
+        p { color: var(--sub-text); font-size: 0.95em; margin-bottom: 25px; }
+        input { width: 100%; padding: 16px; margin: 10px 0; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; box-sizing: border-box; background: rgba(0,0,0,0.3); color: var(--text); font-size: 16px; outline: none; }
+        input:focus { border-color: var(--gold); }
+        button { width: 100%; padding: 16px; background-color: var(--gold); color: #000; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 17px; text-transform: uppercase; letter-spacing: 1px; transition: transform 0.1s; }
+        button:active { transform: scale(0.98); }
+        .id-label { font-size: 0.8em; color: var(--gold); font-weight: bold; background: rgba(212, 175, 55, 0.1); padding: 4px 10px; border-radius: 20px; }
+        
+        /* ESTILOS DEL SALDO */
+        .balance-title { text-transform: uppercase; font-size: 0.75em; color: var(--sub-text); letter-spacing: 2px; margin-bottom: 0; }
+        .balance { font-size: 4em; color: var(--text); margin: 0; font-weight: 900; letter-spacing: -2px; line-height: 1; }
         
         /* ESTILOS DEL HISTORIAL */
-        .history-container { text-align: left; margin-top: 20px; max-height: 200px; overflow-y: auto; }
-        .history-item { font-size: 0.85em; padding: 10px; border-bottom: 1px solid #f8f9fa; display: flex; justify-content: space-between; }
-        .hist-envio { color: #d93025; } /* Rojo para lo que sale */
-        .hist-recibo { color: #1e8e3e; } /* Verde para lo que entra */
+        .history-box { text-align: left; background: var(--bg-card); padding: 25px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05); }
+        .history-list { max-height: 180px; overflow-y: auto; margin-top: 15px; }
+        .history-item { font-size: 0.9em; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; }
+        .hist-envio { color: #ff6b6b; } 
+        .hist-recibo { color: #51cf66; } 
     </style>
 </head>
 <body>
 
-<div class="box" id="login-box">
-    <h2>Δ Acceso</h2>
-    <input type="password" id="access-id" placeholder="Código Secreto">
-    <button onclick="login()">ENTRAR</button>
-</div>
+<div class="container">
+    <div class="box" id="login-box">
+        <h2>Δ CAPITAL</h2>
+        <p>Inicie sesión en su portal de Triángulos</p>
+        <input type="password" id="access-id" placeholder="CÓDIGO PRIVADO">
+        <button onclick="login()">ACCEDER</button>
+    </div>
 
-<div class="box hidden" id="main-box">
-    <p style="margin:0">Hola, <span id="user-name" style="font-weight:bold"></span></p>
-    <div class="balance"><span id="user-balance">0</span><small style="font-size:0.5em">Δ</small></div>
-    
-    <input type="text" id="dest-public-id" placeholder="Enviar a (ID Público)">
-    <input type="number" id="amount" placeholder="Cantidad Δ">
-    <button onclick="transferir()" id="btn-send">ENVIAR</button>
-    <p id="msg"></p>
+    <div class="box hidden" id="main-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <p style="margin:0"><span id="user-name" style="color: var(--text); font-weight:bold;"></span></p>
+            <span class="id-label" id="public-id-display"></span>
+        </div>
+        <p class="balance-title">SALDO DISPONIBLE</p>
+        <div class="balance"><span id="user-balance">0</span><small style="font-size:0.5em">Δ</small></div>
+        
+        <input type="text" id="dest-public-id" placeholder="ID PÚBLICO DESTINATARIO">
+        <input type="number" id="amount" placeholder="CANTIDAD Δ A TRANSFERIR">
+        <button onclick="transferir()" id="btn-send">CONFIRMAR ENVÍO</button>
+        <p id="msg" style="color: #51cf66; font-weight: bold; margin-top: 10px;"></p>
+    </div>
 
-    <hr>
-    <h4 style="text-align:left; margin:0">Últimos movimientos</h4>
-    <div class="history-container" id="history-list">
-        <p style="font-size:0.8em; color:#999; text-align:center">No hay movimientos aún</p>
+    <div class="history-box hidden" id="history-box">
+        <h4 style="color: var(--gold); margin: 0; text-transform: uppercase; font-size: 0.85em; letter-spacing: 1.5px;">Últimas Transacciones</h4>
+        <div class="history-list" id="history-list">
+            <p style="text-align:center; color:var(--sub-text); font-size:0.9em;">Cargando movimientos...</p>
+        </div>
     </div>
 </div>
 
@@ -71,23 +89,28 @@
 
   async function login() {
     const idEntrada = document.getElementById('access-id').value.trim();
-    const userDoc = await db.collection("usuarios").doc(idEntrada).get();
-    
-    if (userDoc.exists) {
-        myDocId = idEntrada;
-        myPublicPin = userDoc.data().pin;
-        document.getElementById('login-box').classList.add('hidden');
-        document.getElementById('main-box').classList.remove('hidden');
-        document.getElementById('user-name').innerText = userDoc.data().nombre;
-        
-        // Saldo en tiempo real
-        db.collection("usuarios").doc(myDocId).onSnapshot(doc => {
-            if(doc.exists) document.getElementById('user-balance').innerText = doc.data().saldo;
-        });
+    if (!idEntrada) return;
 
-        // Cargar historial
-        cargarHistorial();
-    } else { alert("Código incorrecto"); }
+    try {
+        const userDoc = await db.collection("usuarios").doc(idEntrada).get();
+        if (userDoc.exists) {
+            myDocId = idEntrada;
+            myPublicPin = userDoc.data().pin;
+            document.getElementById('login-box').classList.add('hidden');
+            document.getElementById('main-box').classList.remove('hidden');
+            document.getElementById('history-box').classList.remove('hidden');
+            document.getElementById('user-name').innerText = userDoc.data().nombre;
+            document.getElementById('public-id-display').innerText = "ID " + data.pin;
+            
+            // Saldo en tiempo real
+            db.collection("usuarios").doc(myDocId).onSnapshot(doc => {
+                if(doc.exists) document.getElementById('user-balance').innerText = doc.data().saldo;
+            });
+
+            // Cargar historial
+            cargarHistorial();
+        } else { alert("CÓDIGO PRIVADO NO RECONOCIDO."); }
+    } catch (e) { alert("ERROR DE RED."); }
   }
 
   async function transferir() {
@@ -101,15 +124,15 @@
 
     try {
         const snapshot = await db.collection("usuarios").where("pin", "==", targetPin).get();
-        if (snapshot.empty) throw "ID Público no existe";
+        if (snapshot.empty) throw "ID PÚBLICO NO EXISTE";
         
         const destDoc = snapshot.docs[0];
         const myRef = db.collection("usuarios").doc(myDocId);
 
         await db.runTransaction(async (t) => {
             const me = await t.get(myRef);
-            if (me.data().pin.toUpperCase() === targetPin) throw "No puedes enviarte a ti mismo";
-            if (me.data().saldo < cant) throw "Saldo insuficiente";
+            if (me.data().pin.toUpperCase() === targetPin) throw "OPERACIÓN INVÁLIDA";
+            if (me.data().saldo < cant) throw "FONDOS INSUFICIENTES";
             
             t.update(myRef, { saldo: me.data().saldo - cant });
             t.update(destDoc.ref, { saldo: destDoc.data().saldo + cant });
@@ -124,10 +147,11 @@
             });
         });
 
-        msg.className = "success"; msg.innerText = "¡Enviado!";
+        msg.innerText = "TRANSFERENCIA COMPLETADA.";
         document.getElementById('amount').value = "";
+        document.getElementById('dest-public-id').value = "";
     } catch (e) {
-        msg.className = "error"; msg.innerText = e;
+        alert(e);
     } finally {
         btn.disabled = false;
         setTimeout(() => msg.innerText = "", 3000);
@@ -136,9 +160,9 @@
 
   function cargarHistorial() {
     // Escuchar transferencias donde yo sea el emisor O el receptor
+    // Ordenado por fecha (descendente, los últimos arriba)
     db.collection("transferencias")
       .orderBy("fecha", "desc")
-      .limit(10)
       .onSnapshot(snapshot => {
           const list = document.getElementById('history-list');
           list.innerHTML = "";
@@ -148,7 +172,7 @@
           );
 
           if (misMovimientos.length === 0) {
-              list.innerHTML = '<p style="font-size:0.8em; color:#999; text-align:center">Sin movimientos</p>';
+              list.innerHTML = '<p style="text-align:center; color:var(--sub-text); font-size:0.9em;">SIN MOVIMIENTOS RECIENTES.</p>';
               return;
           }
 
@@ -167,104 +191,6 @@
               `;
           });
       });
-  }
-</script>
-</body>
-</html>    <button onclick="login()">ENTRAR</button>
-</div>
-
-<div class="box hidden" id="main-box">
-    <p style="margin-bottom:5px">Hola, <span id="user-name" style="font-weight:bold"></span></p>
-    <span class="id-publico" id="public-id-display"></span>
-    <div class="balance"><span id="user-balance">0</span><small style="font-size:0.5em">Δ</small></div>
-    
-    <hr>
-    
-    <p style="margin:0"><b>Enviar a compañero</b></p>
-    <input type="text" id="dest-public-id" placeholder="ID Público (Ej: GOMEZ)">
-    <input type="number" id="amount" placeholder="Cantidad a enviar">
-    <button onclick="transferir()" id="btn-send">REALIZAR ENVÍO</button>
-    <p id="msg"></p>
-</div>
-
-<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
-
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyBKYhc7yd_rzuaalZSOuu8ER7QMD1PW-cA",
-    authDomain: "banco-triangulos.firebaseapp.com",
-    projectId: "banco-triangulos",
-    storageBucket: "banco-triangulos.firebasestorage.app",
-    messagingSenderId: "694080442853",
-    appId: "1:694080442853:web:2fe514cecf9800bbe69f0c"
-  };
-
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-  let myDocId = ""; 
-
-  async function login() {
-    const idEntrada = document.getElementById('access-id').value.trim();
-    if (!idEntrada) return;
-
-    try {
-        const userDoc = await db.collection("usuarios").doc(idEntrada).get();
-        if (userDoc.exists) {
-            myDocId = idEntrada;
-            const data = userDoc.data();
-            document.getElementById('login-box').classList.add('hidden');
-            document.getElementById('main-box').classList.remove('hidden');
-            document.getElementById('user-name').innerText = data.nombre;
-            document.getElementById('public-id-display').innerText = "ID: " + data.pin;
-            
-            db.collection("usuarios").doc(myDocId).onSnapshot(doc => {
-                if(doc.exists) document.getElementById('user-balance').innerText = doc.data().saldo;
-            });
-        } else { alert("Código incorrecto"); }
-    } catch (e) { alert("Error de red"); }
-  }
-
-  async function transferir() {
-    const targetPin = document.getElementById('dest-public-id').value.trim().toUpperCase();
-    const cant = parseInt(document.getElementById('amount').value);
-    const btn = document.getElementById('btn-send');
-    const msg = document.getElementById('msg');
-
-    if (!targetPin || isNaN(cant) || cant <= 0) return;
-
-    btn.disabled = true;
-    msg.className = "";
-    msg.innerText = "Procesando...";
-
-    try {
-        const snapshot = await db.collection("usuarios").where("pin", "==", targetPin).get();
-        if (snapshot.empty) throw "El ID Público no existe";
-        
-        const destDoc = snapshot.docs[0];
-        const destRef = destDoc.ref;
-        const myRef = db.collection("usuarios").doc(myDocId);
-
-        await db.runTransaction(async (t) => {
-            const me = await t.get(myRef);
-            if (me.data().pin.toUpperCase() === targetPin) throw "No puedes enviarte a ti mismo";
-            if (me.data().saldo < cant) throw "Saldo insuficiente";
-            
-            t.update(myRef, { saldo: me.data().saldo - cant });
-            t.update(destRef, { saldo: destDoc.data().saldo + cant });
-        });
-
-        msg.className = "success";
-        msg.innerText = "¡Enviado con éxito!";
-        document.getElementById('amount').value = "";
-        document.getElementById('dest-public-id').value = "";
-    } catch (e) {
-        msg.className = "error";
-        msg.innerText = e;
-    } finally {
-        btn.disabled = false;
-        setTimeout(() => { msg.innerText = ""; }, 4000);
-    }
   }
 </script>
 </body>
