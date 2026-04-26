@@ -5,13 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recursos de Apuntes 4º ESO</title>
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .box { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 85%; max-width: 350px; text-align: center; }
-        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .box { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 85%; max-width: 350px; text-align: center; }
+        h2 { color: #1a73e8; margin-bottom: 5px; }
+        p { color: #5f6368; font-size: 0.9em; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #dadce0; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 12px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 16px; }
+        button:active { background: #174ea6; }
         .hidden { display: none; }
-        .balance { font-size: 2.5em; color: #333; margin: 15px 0; font-weight: bold; }
-        #msg { color: #28a745; font-size: 0.9em; margin-top: 5px; }
+        .balance { font-size: 2.8em; color: #202124; margin: 15px 0; font-weight: bold; }
+        #msg { font-weight: bold; margin-top: 10px; min-height: 1.2em; }
+        .success { color: #188038; }
+        .error { color: #d93025; }
+        hr { border: 0; border-top: 1px solid #eee; margin: 20px 0; }
     </style>
 </head>
 <body>
@@ -25,13 +31,13 @@
 
 <div class="box hidden" id="main-box">
     <h3>Hola, <span id="user-name"></span></h3>
-    <p style="font-size: 0.9em; color: #666;">Tu ID Público para recibir: <b id="public-id-display"></b></p>
+    <p>ID Público: <b id="public-id-display" style="color: #1a73e8;"></b></p>
     <div class="balance"><span id="user-balance">0</span> Δ</div>
     <hr>
-    <p style="font-size: 0.8em; color: #666;">Enviar a un compañero:</p>
-    <input type="text" id="dest-public-id" placeholder="ID Público del destino">
+    <p><b>Enviar Triángulos</b></p>
+    <input type="text" id="dest-public-id" placeholder="ID Público del compañero">
     <input type="number" id="amount" placeholder="Cantidad Δ">
-    <button onclick="transferir()">ENVIAR TRIÁNGULOS</button>
+    <button onclick="transferir()" id="btn-send">ENVIAR</button>
     <p id="msg"></p>
 </div>
 
@@ -39,6 +45,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
 
 <script>
+  // Tu configuración de Firebase
   const firebaseConfig = {
     apiKey: "AIzaSyBKYhc7yd_rzuaalZSOuu8ER7QMD1PW-cA",
     authDomain: "banco-triangulos.firebaseapp.com",
@@ -50,56 +57,90 @@
 
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
-  let currentDocId = ""; // El ID del documento (Privado)
+  let currentDocId = ""; 
 
+  // LOGIN: Usa el ID del documento
   async function login() {
-    const idPrivado = document.getElementById('access-id').value.toUpperCase().trim();
-    const userDoc = await db.collection("usuarios").doc(idPrivado).get();
-    
-    if (userDoc.exists) {
-        currentDocId = idPrivado;
-        const datos = userDoc.data();
-        document.getElementById('login-box').classList.add('hidden');
-        document.getElementById('main-box').classList.remove('hidden');
-        document.getElementById('user-name').innerText = datos.nombre;
-        document.getElementById('public-id-display').innerText = datos.pin;
-        
-        db.collection("usuarios").doc(currentDocId).onSnapshot((doc) => {
-            if(doc.exists) document.getElementById('user-balance').innerText = doc.data().saldo;
-        });
-    } else { alert("Código incorrecto o no registrado."); }
-  }
-
-  async function transferir() {
-    const destPublicId = document.getElementById('dest-public-id').value.toUpperCase().trim();
-    const cant = parseInt(document.getElementById('amount').value);
-    const msg = document.getElementById('msg');
-
-    if (!destPublicId || isNaN(cant) || cant <= 0) return;
+    const idPrivado = document.getElementById('access-id').value.trim(); // Sin espacios
+    if (!idPrivado) return;
 
     try {
-        // BUSCAR AL DESTINATARIO POR SU ID PÚBLICO (campo 'pin')
-        const snapshot = await db.collection("usuarios").where("pin", "==", destPublicId).get();
+        const userDoc = await db.collection("usuarios").doc(idPrivado).get();
         
-        if (snapshot.empty) { alert("El ID Público de destino no existe."); return; }
+        if (userDoc.exists) {
+            currentDocId = idPrivado;
+            const datos = userDoc.data();
+            document.getElementById('login-box').classList.add('hidden');
+            document.getElementById('main-box').classList.remove('hidden');
+            document.getElementById('user-name').innerText = datos.nombre;
+            document.getElementById('public-id-display').innerText = datos.pin;
+            
+            // Listener en tiempo real para el saldo
+            db.collection("usuarios").doc(currentDocId).onSnapshot((doc) => {
+                if(doc.exists) document.getElementById('user-balance').innerText = doc.data().saldo;
+            });
+        } else {
+            alert("Código privado no encontrado.");
+        }
+    } catch (e) {
+        alert("Error de conexión.");
+    }
+  }
+
+  // TRANSFERENCIA: Busca por el campo 'pin'
+  async function transferir() {
+    const destInput = document.getElementById('dest-public-id').value.trim();
+    const cant = parseInt(document.getElementById('amount').value);
+    const msg = document.getElementById('msg');
+    const btn = document.getElementById('btn-send');
+
+    if (!destInput || isNaN(cant) || cant <= 0) {
+        showMsg("Datos inválidos", "error");
+        return;
+    }
+
+    btn.disabled = true;
+    msg.innerText = "Procesando...";
+
+    try {
+        // 1. Buscamos el documento cuyo campo 'pin' coincida con el destino
+        const snapshot = await db.collection("usuarios").where("pin", "==", destInput).get();
+        
+        if (snapshot.empty) {
+            throw "El ID Público no existe";
+        }
         
         const destDoc = snapshot.docs[0];
         const destRef = destDoc.ref;
         const userRef = db.collection("usuarios").doc(currentDocId);
 
+        // 2. Ejecutamos la transacción
         await db.runTransaction(async (t) => {
             const uDoc = await t.get(userRef);
-            if (uDoc.data().pin === destPublicId) throw "No puedes enviarte a ti mismo";
+            
+            if (uDoc.data().pin === destInput) throw "No puedes enviarte a ti mismo";
             if (uDoc.data().saldo < cant) throw "Saldo insuficiente";
             
             t.update(userRef, { saldo: uDoc.data().saldo - cant });
             t.update(destRef, { saldo: destDoc.data().saldo + cant });
         });
 
-        msg.innerText = "¡Enviado con éxito!";
+        showMsg("¡Transferencia éxito!", "success");
         document.getElementById('amount').value = "";
-        setTimeout(() => msg.innerText = "", 3000);
-    } catch (e) { alert("Error: " + e); }
+        document.getElementById('dest-public-id').value = "";
+
+    } catch (e) {
+        showMsg(e, "error");
+    } finally {
+        btn.disabled = false;
+    }
+  }
+
+  function showMsg(text, type) {
+    const msg = document.getElementById('msg');
+    msg.innerText = text;
+    msg.className = type;
+    setTimeout(() => { msg.innerText = ""; }, 4000);
   }
 </script>
 </body>
