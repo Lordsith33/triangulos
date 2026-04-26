@@ -3,38 +3,174 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Banco Δ">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/590/590510.png"> 
-    
-    <title>Banco Δ - Apuntes</title>
-    
+    <title>Banco Δ - Historial</title>
     <style>
-        :root { --primary: #1a73e8; --bg: #f8f9fa; }
-        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; -webkit-tap-highlight-color: transparent; }
-        .box { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); width: 85%; max-width: 350px; text-align: center; }
+        :root { --primary: #1a73e8; --bg: #f8f9fa; --text: #202124; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; display: flex; justify-content: center; padding: 20px; box-sizing: border-box; min-height: 100vh; }
+        .box { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); width: 100%; max-width: 380px; text-align: center; height: fit-content; }
         input { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #e0e0e0; border-radius: 12px; box-sizing: border-box; font-size: 16px; outline: none; }
-        input:focus { border-color: var(--primary); }
-        button { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 16px; transition: transform 0.1s; }
-        button:active { transform: scale(0.98); }
-        .balance { font-size: 3em; color: #202124; margin: 10px 0; font-weight: 800; letter-spacing: -1px; }
+        button { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 16px; }
+        .balance { font-size: 3em; color: var(--text); margin: 10px 0; font-weight: 800; }
         .hidden { display: none; }
-        #msg { margin-top: 15px; font-weight: bold; font-size: 0.9em; min-height: 1.2em; }
+        #msg { margin-top: 10px; font-weight: bold; font-size: 0.85em; }
         .success { color: #1e8e3e; }
         .error { color: #d93025; }
-        .id-publico { background: #e8f0fe; color: var(--primary); padding: 5px 12px; border-radius: 20px; font-size: 0.85em; font-weight: bold; }
         hr { border: 0; border-top: 1px solid #f1f1f1; margin: 20px 0; }
+        
+        /* ESTILOS DEL HISTORIAL */
+        .history-container { text-align: left; margin-top: 20px; max-height: 200px; overflow-y: auto; }
+        .history-item { font-size: 0.85em; padding: 10px; border-bottom: 1px solid #f8f9fa; display: flex; justify-content: space-between; }
+        .hist-envio { color: #d93025; } /* Rojo para lo que sale */
+        .hist-recibo { color: #1e8e3e; } /* Verde para lo que entra */
     </style>
 </head>
 <body>
 
 <div class="box" id="login-box">
-    <h2 style="margin-top:0">Δ Acceso</h2>
-    <p>Introduce tu código privado de alumno</p>
+    <h2>Δ Acceso</h2>
     <input type="password" id="access-id" placeholder="Código Secreto">
     <button onclick="login()">ENTRAR</button>
+</div>
+
+<div class="box hidden" id="main-box">
+    <p style="margin:0">Hola, <span id="user-name" style="font-weight:bold"></span></p>
+    <div class="balance"><span id="user-balance">0</span><small style="font-size:0.5em">Δ</small></div>
+    
+    <input type="text" id="dest-public-id" placeholder="Enviar a (ID Público)">
+    <input type="number" id="amount" placeholder="Cantidad Δ">
+    <button onclick="transferir()" id="btn-send">ENVIAR</button>
+    <p id="msg"></p>
+
+    <hr>
+    <h4 style="text-align:left; margin:0">Últimos movimientos</h4>
+    <div class="history-container" id="history-list">
+        <p style="font-size:0.8em; color:#999; text-align:center">No hay movimientos aún</p>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBKYhc7yd_rzuaalZSOuu8ER7QMD1PW-cA",
+    authDomain: "banco-triangulos.firebaseapp.com",
+    projectId: "banco-triangulos",
+    storageBucket: "banco-triangulos.firebasestorage.app",
+    messagingSenderId: "694080442853",
+    appId: "1:694080442853:web:2fe514cecf9800bbe69f0c"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  let myDocId = ""; 
+  let myPublicPin = "";
+
+  async function login() {
+    const idEntrada = document.getElementById('access-id').value.trim();
+    const userDoc = await db.collection("usuarios").doc(idEntrada).get();
+    
+    if (userDoc.exists) {
+        myDocId = idEntrada;
+        myPublicPin = userDoc.data().pin;
+        document.getElementById('login-box').classList.add('hidden');
+        document.getElementById('main-box').classList.remove('hidden');
+        document.getElementById('user-name').innerText = userDoc.data().nombre;
+        
+        // Saldo en tiempo real
+        db.collection("usuarios").doc(myDocId).onSnapshot(doc => {
+            if(doc.exists) document.getElementById('user-balance').innerText = doc.data().saldo;
+        });
+
+        // Cargar historial
+        cargarHistorial();
+    } else { alert("Código incorrecto"); }
+  }
+
+  async function transferir() {
+    const targetPin = document.getElementById('dest-public-id').value.trim().toUpperCase();
+    const cant = parseInt(document.getElementById('amount').value);
+    const btn = document.getElementById('btn-send');
+    const msg = document.getElementById('msg');
+
+    if (!targetPin || isNaN(cant) || cant <= 0) return;
+    btn.disabled = true;
+
+    try {
+        const snapshot = await db.collection("usuarios").where("pin", "==", targetPin).get();
+        if (snapshot.empty) throw "ID Público no existe";
+        
+        const destDoc = snapshot.docs[0];
+        const myRef = db.collection("usuarios").doc(myDocId);
+
+        await db.runTransaction(async (t) => {
+            const me = await t.get(myRef);
+            if (me.data().pin.toUpperCase() === targetPin) throw "No puedes enviarte a ti mismo";
+            if (me.data().saldo < cant) throw "Saldo insuficiente";
+            
+            t.update(myRef, { saldo: me.data().saldo - cant });
+            t.update(destDoc.ref, { saldo: destDoc.data().saldo + cant });
+            
+            // REGISTRAR EN EL HISTORIAL
+            const nuevaTrans = db.collection("transferencias").doc();
+            t.set(nuevaTrans, {
+                de: myPublicPin,
+                para: targetPin,
+                cantidad: cant,
+                fecha: Date.now()
+            });
+        });
+
+        msg.className = "success"; msg.innerText = "¡Enviado!";
+        document.getElementById('amount').value = "";
+    } catch (e) {
+        msg.className = "error"; msg.innerText = e;
+    } finally {
+        btn.disabled = false;
+        setTimeout(() => msg.innerText = "", 3000);
+    }
+  }
+
+  function cargarHistorial() {
+    // Escuchar transferencias donde yo sea el emisor O el receptor
+    db.collection("transferencias")
+      .orderBy("fecha", "desc")
+      .limit(10)
+      .onSnapshot(snapshot => {
+          const list = document.getElementById('history-list');
+          list.innerHTML = "";
+          
+          let misMovimientos = snapshot.docs.filter(doc => 
+              doc.data().de === myPublicPin || doc.data().para === myPublicPin
+          );
+
+          if (misMovimientos.length === 0) {
+              list.innerHTML = '<p style="font-size:0.8em; color:#999; text-align:center">Sin movimientos</p>';
+              return;
+          }
+
+          misMovimientos.forEach(doc => {
+              const t = doc.data();
+              const soyYoElQueEnvia = t.de === myPublicPin;
+              const clase = soyYoElQueEnvia ? "hist-envio" : "hist-recibo";
+              const signo = soyYoElQueEnvia ? "-" : "+";
+              const persona = soyYoElQueEnvia ? "A: " + t.para : "De: " + t.de;
+              
+              list.innerHTML += `
+                <div class="history-item">
+                    <span>${persona}</span>
+                    <span class="${clase}"><b>${signo}${t.cantidad} Δ</b></span>
+                </div>
+              `;
+          });
+      });
+  }
+</script>
+</body>
+</html>    <button onclick="login()">ENTRAR</button>
 </div>
 
 <div class="box hidden" id="main-box">
