@@ -2,42 +2,52 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recursos de Apuntes 4º ESO</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Banco Δ">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/590/590510.png"> 
+    
+    <title>Banco Δ - Apuntes</title>
+    
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .box { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 85%; max-width: 350px; text-align: center; }
-        h2 { color: #1a73e8; margin-bottom: 5px; }
-        p { color: #5f6368; font-size: 0.9em; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #dadce0; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        button { width: 100%; padding: 12px; background: #1a73e8; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 16px; }
-        button:active { background: #174ea6; }
+        :root { --primary: #1a73e8; --bg: #f8f9fa; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; -webkit-tap-highlight-color: transparent; }
+        .box { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); width: 85%; max-width: 350px; text-align: center; }
+        input { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #e0e0e0; border-radius: 12px; box-sizing: border-box; font-size: 16px; outline: none; }
+        input:focus { border-color: var(--primary); }
+        button { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 16px; transition: transform 0.1s; }
+        button:active { transform: scale(0.98); }
+        .balance { font-size: 3em; color: #202124; margin: 10px 0; font-weight: 800; letter-spacing: -1px; }
         .hidden { display: none; }
-        .balance { font-size: 2.8em; color: #202124; margin: 15px 0; font-weight: bold; }
-        #msg { font-weight: bold; margin-top: 10px; min-height: 1.2em; }
-        .success { color: #188038; }
+        #msg { margin-top: 15px; font-weight: bold; font-size: 0.9em; min-height: 1.2em; }
+        .success { color: #1e8e3e; }
         .error { color: #d93025; }
-        hr { border: 0; border-top: 1px solid #eee; margin: 20px 0; }
+        .id-publico { background: #e8f0fe; color: var(--primary); padding: 5px 12px; border-radius: 20px; font-size: 0.85em; font-weight: bold; }
+        hr { border: 0; border-top: 1px solid #f1f1f1; margin: 20px 0; }
     </style>
 </head>
 <body>
 
 <div class="box" id="login-box">
-    <h2>Acceso Seguro</h2>
-    <p>Introduce tu Código de Estudiante:</p>
-    <input type="password" id="access-id" placeholder="Código Privado">
+    <h2 style="margin-top:0">Δ Acceso</h2>
+    <p>Introduce tu código privado de alumno</p>
+    <input type="password" id="access-id" placeholder="Código Secreto">
     <button onclick="login()">ENTRAR</button>
 </div>
 
 <div class="box hidden" id="main-box">
-    <h3>Hola, <span id="user-name"></span></h3>
-    <p>ID Público: <b id="public-id-display" style="color: #1a73e8;"></b></p>
-    <div class="balance"><span id="user-balance">0</span> Δ</div>
+    <p style="margin-bottom:5px">Hola, <span id="user-name" style="font-weight:bold"></span></p>
+    <span class="id-publico" id="public-id-display"></span>
+    <div class="balance"><span id="user-balance">0</span><small style="font-size:0.5em">Δ</small></div>
+    
     <hr>
-    <p><b>Enviar Triángulos</b></p>
-    <input type="text" id="dest-public-id" placeholder="ID Público del compañero">
-    <input type="number" id="amount" placeholder="Cantidad Δ">
-    <button onclick="transferir()" id="btn-send">ENVIAR</button>
+    
+    <p style="margin:0"><b>Enviar a compañero</b></p>
+    <input type="text" id="dest-public-id" placeholder="ID Público (Ej: GOMEZ)">
+    <input type="number" id="amount" placeholder="Cantidad a enviar">
+    <button onclick="transferir()" id="btn-send">REALIZAR ENVÍO</button>
     <p id="msg"></p>
 </div>
 
@@ -45,7 +55,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
 
 <script>
-  // Tu configuración de Firebase
   const firebaseConfig = {
     apiKey: "AIzaSyBKYhc7yd_rzuaalZSOuu8ER7QMD1PW-cA",
     authDomain: "banco-triangulos.firebaseapp.com",
@@ -57,90 +66,69 @@
 
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
-  let currentDocId = ""; 
+  let myDocId = ""; 
 
-  // LOGIN: Usa el ID del documento
   async function login() {
-    const idPrivado = document.getElementById('access-id').value.trim(); // Sin espacios
-    if (!idPrivado) return;
+    const idEntrada = document.getElementById('access-id').value.trim();
+    if (!idEntrada) return;
 
     try {
-        const userDoc = await db.collection("usuarios").doc(idPrivado).get();
-        
+        const userDoc = await db.collection("usuarios").doc(idEntrada).get();
         if (userDoc.exists) {
-            currentDocId = idPrivado;
-            const datos = userDoc.data();
+            myDocId = idEntrada;
+            const data = userDoc.data();
             document.getElementById('login-box').classList.add('hidden');
             document.getElementById('main-box').classList.remove('hidden');
-            document.getElementById('user-name').innerText = datos.nombre;
-            document.getElementById('public-id-display').innerText = datos.pin;
+            document.getElementById('user-name').innerText = data.nombre;
+            document.getElementById('public-id-display').innerText = "ID: " + data.pin;
             
-            // Listener en tiempo real para el saldo
-            db.collection("usuarios").doc(currentDocId).onSnapshot((doc) => {
+            db.collection("usuarios").doc(myDocId).onSnapshot(doc => {
                 if(doc.exists) document.getElementById('user-balance').innerText = doc.data().saldo;
             });
-        } else {
-            alert("Código privado no encontrado.");
-        }
-    } catch (e) {
-        alert("Error de conexión.");
-    }
+        } else { alert("Código incorrecto"); }
+    } catch (e) { alert("Error de red"); }
   }
 
-  // TRANSFERENCIA: Busca por el campo 'pin'
   async function transferir() {
-    const destInput = document.getElementById('dest-public-id').value.trim();
+    const targetPin = document.getElementById('dest-public-id').value.trim().toUpperCase();
     const cant = parseInt(document.getElementById('amount').value);
-    const msg = document.getElementById('msg');
     const btn = document.getElementById('btn-send');
+    const msg = document.getElementById('msg');
 
-    if (!destInput || isNaN(cant) || cant <= 0) {
-        showMsg("Datos inválidos", "error");
-        return;
-    }
+    if (!targetPin || isNaN(cant) || cant <= 0) return;
 
     btn.disabled = true;
+    msg.className = "";
     msg.innerText = "Procesando...";
 
     try {
-        // 1. Buscamos el documento cuyo campo 'pin' coincida con el destino
-        const snapshot = await db.collection("usuarios").where("pin", "==", destInput).get();
-        
-        if (snapshot.empty) {
-            throw "El ID Público no existe";
-        }
+        const snapshot = await db.collection("usuarios").where("pin", "==", targetPin).get();
+        if (snapshot.empty) throw "El ID Público no existe";
         
         const destDoc = snapshot.docs[0];
         const destRef = destDoc.ref;
-        const userRef = db.collection("usuarios").doc(currentDocId);
+        const myRef = db.collection("usuarios").doc(myDocId);
 
-        // 2. Ejecutamos la transacción
         await db.runTransaction(async (t) => {
-            const uDoc = await t.get(userRef);
+            const me = await t.get(myRef);
+            if (me.data().pin.toUpperCase() === targetPin) throw "No puedes enviarte a ti mismo";
+            if (me.data().saldo < cant) throw "Saldo insuficiente";
             
-            if (uDoc.data().pin === destInput) throw "No puedes enviarte a ti mismo";
-            if (uDoc.data().saldo < cant) throw "Saldo insuficiente";
-            
-            t.update(userRef, { saldo: uDoc.data().saldo - cant });
+            t.update(myRef, { saldo: me.data().saldo - cant });
             t.update(destRef, { saldo: destDoc.data().saldo + cant });
         });
 
-        showMsg("¡Transferencia éxito!", "success");
+        msg.className = "success";
+        msg.innerText = "¡Enviado con éxito!";
         document.getElementById('amount').value = "";
         document.getElementById('dest-public-id').value = "";
-
     } catch (e) {
-        showMsg(e, "error");
+        msg.className = "error";
+        msg.innerText = e;
     } finally {
         btn.disabled = false;
+        setTimeout(() => { msg.innerText = ""; }, 4000);
     }
-  }
-
-  function showMsg(text, type) {
-    const msg = document.getElementById('msg');
-    msg.innerText = text;
-    msg.className = type;
-    setTimeout(() => { msg.innerText = ""; }, 4000);
   }
 </script>
 </body>
