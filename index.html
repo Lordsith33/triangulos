@@ -121,22 +121,43 @@
     } catch (e) { alert(e); } finally { btn.disabled = false; }
   }
 
-  function cargarHistorial() {
-    // Hemos quitado el .orderBy para evitar el error de índice en móviles
-    db.collection("transferencias").limit(8).onSnapshot(snap => {
+    function cargarHistorial() {
+    // 1. Pedimos las transferencias (sin pedir orden al servidor para evitar errores)
+    db.collection("transferencias").limit(30).onSnapshot(snap => {
         const list = document.getElementById('history-list');
         list.innerHTML = "";
+        
+        let movimientos = [];
+        
+        // 2. Filtramos solo las que son mías
         snap.docs.forEach(doc => {
             const t = doc.data();
             if (t.de === myPublicPin || t.para === myPublicPin) {
-                const soyYo = t.de === myPublicPin;
-                list.innerHTML += `<div class="history-item">
-                    <span>${soyYo ? 'A: '+t.para : 'DE: '+t.de}</span>
-                    <span class="${soyYo ? 'error' : 'success'}">${soyYo ? '-' : '+'}${t.cantidad} Δ</span>
-                </div>`;
+                movimientos.push(t);
             }
         });
+
+        // 3. ESTA ES LA FUNCIÓN QUE CREAMOS: Ordena por fecha de mayor a menor
+        movimientos.sort((a, b) => b.fecha - a.fecha);
+
+        if (movimientos.length === 0) {
+            list.innerHTML = '<p style="text-align:center; color:var(--sub-text); font-size:0.8em;">SIN MOVIMIENTOS.</p>';
+            return;
+        }
+
+        // 4. Los dibujamos en la pantalla
+        movimientos.forEach(t => {
+            const soyYo = t.de === myPublicPin;
+            list.innerHTML += `<div class="history-item">
+                <span>${soyYo ? 'A: '+t.para : 'DE: '+t.de}</span>
+                <span class="${soyYo ? 'error' : 'success'}">${soyYo ? '-' : '+'}${t.cantidad} Δ</span>
+            </div>`;
+        });
+    }, err => {
+        console.log("Error en historial: ", err);
     });
+  }
+
   }
 </script>
 </body>
