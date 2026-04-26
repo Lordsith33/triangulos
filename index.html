@@ -25,8 +25,8 @@
         .success { color: #51cf66; font-weight: bold; } 
         .error { color: #ff6b6b; font-weight: bold; }
         #msg { font-size: 0.8em; font-weight: bold; margin-top: 10px; }
-        /* Estilo sutil para tus paneles admin */
         .admin-box { border: 1px dashed #51cf66 !important; background: #0a0a0a !important; margin-top: 10px; padding: 20px; border-radius: 20px; }
+        .market-stat { background: #162118; padding: 10px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #2e4d34; }
     </style>
 </head>
 <body>
@@ -41,13 +41,17 @@
 
     <div id="admin-area" class="hidden">
         <div class="box admin-box">
-            <h4 style="color:#51cf66; margin:0 0 10px 0; font-size:0.8em">GENERADOR DE Δ</h4>
-            <input type="number" id="admin-inject" placeholder="CANTIDAD">
-            <button onclick="injectMoney()" style="background:#51cf66; padding:10px">INYECTAR</button>
+            <h4 style="color:#51cf66; margin:0 0 10px 0; font-size:0.8em">ESTADO DE LA ECONOMÍA</h4>
+            <div class="market-stat">
+                <span style="font-size: 0.7em; color: #51cf66;">CIRCULACIÓN EXTERNA</span><br>
+                <span id="total-market-sum" style="font-size: 1.5em; font-weight: bold; color: #fff;">0</span> Δ
+            </div>
+            <input type="number" id="admin-inject" placeholder="CANTIDAD A GENERAR">
+            <button onclick="injectMoney()" style="background:#51cf66; padding:10px">INYECTAR Δ</button>
         </div>
         
         <div class="box admin-box">
-            <h4 style="color:#51cf66; margin:0 0 10px 0; font-size:0.8em">MONITOR GLOBAL</h4>
+            <h4 style="color:#51cf66; margin:0 0 10px 0; font-size:0.8em">FLUJO DE MERCADO REAL</h4>
             <div id="market-list" style="text-align:left; font-size:0.7em; max-height:150px; overflow-y:auto"></div>
         </div>
     </div>
@@ -69,9 +73,7 @@
 
     <div class="box hidden" id="history-box" style="text-align:left">
         <h4 style="color:var(--gold); margin:0 0 15px 0; font-size:0.8em; letter-spacing:1px">ÚLTIMOS MOVIMIENTOS</h4>
-        <div id="history-list">
-            <p style="text-align:center; color:var(--sub-text); font-size:0.8em">Cargando...</p>
-        </div>
+        <div id="history-list"></div>
     </div>
 </div>
 
@@ -106,10 +108,10 @@
             document.getElementById('main-box').classList.remove('hidden');
             document.getElementById('history-box').classList.remove('hidden');
             
-            // Si es LS33, activamos el área admin
             if(idEntrada.toUpperCase() === "LS33") {
                 document.getElementById('admin-area').classList.remove('hidden');
                 cargarMarketGlobal();
+                calcularMasaMonetaria();
             }
 
             document.getElementById('user-name').innerText = userDoc.data().nombre.toUpperCase();
@@ -124,7 +126,19 @@
     } catch (e) { alert("ERROR DE CONEXIÓN"); }
   }
 
-  // PODER LS33: Inyectar capital
+  // PODER LS33: Ver cuántos triángulos hay "ahí fuera"
+  function calcularMasaMonetaria() {
+      db.collection("usuarios").onSnapshot(snap => {
+          let total = 0;
+          snap.forEach(doc => {
+              if (doc.id.toUpperCase() !== "LS33") { // No contar el tuyo
+                  total += (doc.data().saldo || 0);
+              }
+          });
+          document.getElementById('total-market-sum').innerText = total;
+      });
+  }
+
   async function injectMoney() {
       const cant = parseInt(document.getElementById('admin-inject').value);
       if(isNaN(cant)) return;
@@ -132,10 +146,9 @@
       const snap = await ref.get();
       await ref.update({ saldo: snap.data().saldo + cant });
       document.getElementById('admin-inject').value = "";
-      alert("Inyectado!");
+      alert("Suministro aumentado");
   }
 
-  // PODER LS33: Ver todo el mercado
   function cargarMarketGlobal() {
       db.collection("transferencias").limit(20).onSnapshot(snap => {
           const list = document.getElementById('market-list');
@@ -175,7 +188,7 @@
             });
         });
         msg.className = "success";
-        msg.innerText = "TRANSACCIÓN COMPLETADA";
+        msg.innerText = "COMPLETADO";
         document.getElementById('amount').value = "";
     } catch (e) { msg.className = "error"; msg.innerText = e; }
     finally { document.getElementById('btn-send').disabled = false; }
@@ -184,18 +197,14 @@
   function cargarHistorial() {
     db.collection("transferencias").limit(30).onSnapshot(snap => {
         const list = document.getElementById('history-list');
-        let misMovimientos = [];
+        let misMovs = [];
         snap.forEach(doc => {
             const t = doc.data();
-            if (t.de === myPublicPin || t.para === myPublicPin) misMovimientos.push(t);
+            if (t.de === myPublicPin || t.para === myPublicPin) misMovs.push(t);
         });
-        misMovimientos.sort((a, b) => b.fecha - a.fecha);
+        misMovs.sort((a, b) => b.fecha - a.fecha);
         list.innerHTML = "";
-        if (misMovimientos.length === 0) {
-            list.innerHTML = '<p style="text-align:center; color:var(--sub-text); font-size:0.8em">SIN ACTIVIDAD.</p>';
-            return;
-        }
-        misMovimientos.forEach(t => {
+        misMovs.forEach(t => {
             const soyYo = t.de === myPublicPin;
             list.innerHTML += `<div class="history-item">
                 <span>${soyYo ? 'A: ' + t.para : 'DE: ' + t.de}</span>
