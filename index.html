@@ -3,37 +3,195 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Δ CAPITAL">
+    
     <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/e/ec/Regular_triangle.svg"> 
+    
     <title>Δ CAPITAL</title>
+    
     <style>
-        :root { --gold: #d4af37; --bg-dark: #121212; --bg-card: #1e1e1e; --text: #eaeaea; }
-        body { font-family: sans-serif; background-color: var(--bg-dark); color: var(--text); margin: 0; display: flex; justify-content: center; padding: 20px; }
+        :root { --gold: #d4af37; --bg-dark: #121212; --bg-card: #1e1e1e; --text: #eaeaea; --sub-text: #aaaaaa; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg-dark); color: var(--text); margin: 0; display: flex; justify-content: center; padding: 20px; box-sizing: border-box; min-height: 100vh; }
         .container { width: 100%; max-width: 400px; }
         .box { background: var(--bg-card); padding: 30px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.05); }
-        input { width: 100%; padding: 16px; margin: 10px 0; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; background: #000; color: #fff; font-size: 16px; box-sizing: border-box; }
-        button { width: 100%; padding: 16px; background: var(--gold); color: #000; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; }
-        .balance { font-size: 3.5em; font-weight: 900; margin: 10px 0; color: #fff; }
+        h2 { color: var(--gold); margin: 0; font-weight: 800; letter-spacing: 2px; }
+        input { width: 100%; padding: 16px; margin: 10px 0; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; background: #000; color: #fff; font-size: 16px; box-sizing: border-box; outline: none; }
+        input:focus { border-color: var(--gold); }
+        button { width: 100%; padding: 16px; background: var(--gold); color: #000; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
+        button:disabled { opacity: 0.5; }
+        .balance-label { font-size: 0.7em; letter-spacing: 3px; color: var(--sub-text); margin-top: 20px; }
+        .balance { font-size: 4em; font-weight: 900; margin: 5px 0; color: #fff; letter-spacing: -2px; }
         .hidden { display: none; }
-        .history-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #333; font-size: 0.8em; }
-        .success { color: #51cf66; } .error { color: #ff6b6b; }
+        .history-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #333; font-size: 0.85em; }
+        .success { color: #51cf66; font-weight: bold; } 
+        .error { color: #ff6b6b; font-weight: bold; }
+        #msg { font-size: 0.8em; font-weight: bold; margin-top: 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="box" id="login-box">
-        <h2 style="color:var(--gold)">Δ CAPITAL</h2>
-        <input type="password" id="access-id" placeholder="CÓDIGO PRIVADO">
+        <h2 style="margin-bottom:10px">Δ CAPITAL</h2>
+        <p style="color:var(--sub-text); font-size:0.8em">PORTAL FINANCIERO PRIVADO</p>
+        <input type="password" id="access-id" placeholder="CÓDIGO DE ACCESO">
         <button onclick="login()">ENTRAR</button>
     </div>
 
     <div class="box hidden" id="main-box">
         <div style="display:flex; justify-content:space-between; align-items:center">
-            <span id="user-name" style="font-weight:bold"></span>
-            <span id="public-id-display" style="color:var(--gold); font-size:0.8em"></span>
+            <span id="user-name" style="font-weight:bold; color:var(--gold)"></span>
+            <span id="public-id-display" style="font-size:0.8em; opacity:0.7"></span>
         </div>
+        
+        <p class="balance-label">SALDO DISPONIBLE</p>
+        <div class="balance"><span id="user-balance">0</span><small style="font-size:0.4em"> Δ</small></div>
+        
+        <input type="text" id="dest-public-id" placeholder="ID PÚBLICO DESTINARIO">
+        <input type="number" id="amount" placeholder="CANTIDAD Δ">
+        <button onclick="transferir()" id="btn-send">CONFIRMAR ENVÍO</button>
+        <p id="msg"></p>
+    </div>
+
+    <div class="box hidden" id="history-box" style="text-align:left">
+        <h4 style="color:var(--gold); margin:0 0 15px 0; font-size:0.8em; letter-spacing:1px">ÚLTIMOS MOVIMIENTOS</h4>
+        <div id="history-list">
+            <p style="text-align:center; color:var(--sub-text); font-size:0.8em">No hay transacciones.</p>
+        </div>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+
+<script>
+  // Tu Configuración
+  const firebaseConfig = {
+    apiKey: "AIzaSyBKYhc7yd_rzuaalZSOuu8ER7QMD1PW-cA",
+    authDomain: "banco-triangulos.firebaseapp.com",
+    projectId: "banco-triangulos",
+    storageBucket: "banco-triangulos.firebasestorage.app",
+    messagingSenderId: "694080442853",
+    appId: "1:694080442853:web:2fe514cecf9800bbe69f0c"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  let myDocId = ""; 
+  let myPublicPin = "";
+
+  async function login() {
+    const idEntrada = document.getElementById('access-id').value.trim();
+    if (!idEntrada) return;
+    try {
+        const userDoc = await db.collection("usuarios").doc(idEntrada).get();
+        if (userDoc.exists) {
+            myDocId = idEntrada;
+            const data = userDoc.data();
+            myPublicPin = data.pin;
+            
+            document.getElementById('login-box').classList.add('hidden');
+            document.getElementById('main-box').classList.remove('hidden');
+            document.getElementById('history-box').classList.remove('hidden');
+            
+            document.getElementById('user-name').innerText = data.nombre.toUpperCase();
+            document.getElementById('public-id-display').innerText = "ID: " + myPublicPin;
+            
+            // Escuchar saldo
+            db.collection("usuarios").doc(myDocId).onSnapshot(doc => {
+                if(doc.exists) document.getElementById('user-balance').innerText = doc.data().saldo;
+            });
+            
+            cargarHistorial();
+        } else { alert("ACCESO DENEGADO: CÓDIGO INVÁLIDO"); }
+    } catch (e) { alert("ERROR DE CONEXIÓN: Verifica tus reglas de Firebase."); }
+  }
+
+  async function transferir() {
+    const targetPin = document.getElementById('dest-public-id').value.trim().toUpperCase();
+    const cant = parseInt(document.getElementById('amount').value);
+    const msg = document.getElementById('msg');
+    const btn = document.getElementById('btn-send');
+
+    if (!targetPin || isNaN(cant) || cant <= 0) return;
+    
+    btn.disabled = true;
+    msg.innerText = "PROCESANDO...";
+
+    try {
+        const snapshot = await db.collection("usuarios").where("pin", "==", targetPin).get();
+        if (snapshot.empty) throw "EL DESTINATARIO NO EXISTE";
+        
+        const destDoc = snapshot.docs[0];
+        const myRef = db.collection("usuarios").doc(myDocId);
+
+        await db.runTransaction(async (t) => {
+            const me = await t.get(myRef);
+            if (me.data().pin.toUpperCase() === targetPin) throw "ERROR EN CUENTA DESTINO";
+            if (me.data().saldo < cant) throw "FONDOS INSUFICIENTES";
+            
+            t.update(myRef, { saldo: me.data().saldo - cant });
+            t.update(destDoc.ref, { saldo: destDoc.data().saldo + cant });
+            
+            t.set(db.collection("transferencias").doc(), {
+                de: myPublicPin,
+                para: targetPin,
+                cantidad: cant,
+                fecha: Date.now()
+            });
+        });
+
+        msg.className = "success";
+        msg.innerText = "TRANSACCIÓN COMPLETADA";
+        document.getElementById('dest-public-id').value = "";
+        document.getElementById('amount').value = "";
+    } catch (e) {
+        msg.className = "error";
+        msg.innerText = e;
+    } finally {
+        btn.disabled = false;
+        setTimeout(() => msg.innerText = "", 4000);
+    }
+  }
+
+  function cargarHistorial() {
+    // Escuchamos los últimos 30 movimientos globales (sin orden de servidor para evitar Error de Red)
+    db.collection("transferencias").limit(30).onSnapshot(snap => {
+        const list = document.getElementById('history-list');
+        let misMovimientos = [];
+        
+        snap.docs.forEach(doc => {
+            const t = doc.data();
+            if (t.de === myPublicPin || t.para === myPublicPin) {
+                misMovimientos.push(t);
+            }
+        });
+
+        // ORDENADO MANUAL EN EL DISPOSITIVO (Más reciente arriba)
+        misMovimientos.sort((a, b) => b.fecha - a.fecha);
+
+        list.innerHTML = "";
+        if (misMovimientos.length === 0) {
+            list.innerHTML = '<p style="text-align:center; color:var(--sub-text); font-size:0.8em">SIN ACTIVIDAD.</p>';
+            return;
+        }
+
+        misMovimientos.forEach(t => {
+            const soyYo = t.de === myPublicPin;
+            list.innerHTML += `
+                <div class="history-item">
+                    <span>${soyYo ? 'A: ' + t.para : 'DE: ' + t.de}</span>
+                    <span class="${soyYo ? 'error' : 'success'}">${soyYo ? '-' : '+'}${t.cantidad} Δ</span>
+                </div>`;
+        });
+    });
+  }
+</script>
+</body>
+</html>
         <p style="font-size:0.7em; letter-spacing:2px; margin:20px 0 0 0">SALDO DISPONIBLE</p>
         <div class="balance"><span id="user-balance">0</span><small style="font-size:0.4em">Δ</small></div>
         <input type="text" id="dest-public-id" placeholder="ID PÚBLICO DESTINATARIO">
