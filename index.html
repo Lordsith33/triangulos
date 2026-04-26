@@ -59,7 +59,7 @@
     <div class="box hidden" id="history-box" style="text-align:left">
         <h4 style="color:var(--gold); margin:0 0 15px 0; font-size:0.8em; letter-spacing:1px">ÚLTIMOS MOVIMIENTOS</h4>
         <div id="history-list">
-            <p style="text-align:center; color:var(--sub-text); font-size:0.8em">No hay transacciones.</p>
+            <p style="text-align:center; color:var(--sub-text); font-size:0.8em">Cargando...</p>
         </div>
     </div>
 </div>
@@ -68,7 +68,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
 
 <script>
-  // Tu Configuración
   const firebaseConfig = {
     apiKey: "AIzaSyBKYhc7yd_rzuaalZSOuu8ER7QMD1PW-cA",
     authDomain: "banco-triangulos.firebaseapp.com",
@@ -100,14 +99,13 @@
             document.getElementById('user-name').innerText = data.nombre.toUpperCase();
             document.getElementById('public-id-display').innerText = "ID: " + myPublicPin;
             
-            // Escuchar saldo
             db.collection("usuarios").doc(myDocId).onSnapshot(doc => {
                 if(doc.exists) document.getElementById('user-balance').innerText = doc.data().saldo;
             });
             
             cargarHistorial();
-        } else { alert("ACCESO DENEGADO: CÓDIGO INVÁLIDO"); }
-    } catch (e) { alert("ERROR DE CONEXIÓN: Verifica tus reglas de Firebase."); }
+        } else { alert("CÓDIGO INVÁLIDO"); }
+    } catch (e) { alert("ERROR DE CONEXIÓN"); }
   }
 
   async function transferir() {
@@ -117,20 +115,19 @@
     const btn = document.getElementById('btn-send');
 
     if (!targetPin || isNaN(cant) || cant <= 0) return;
-    
     btn.disabled = true;
     msg.innerText = "PROCESANDO...";
 
     try {
         const snapshot = await db.collection("usuarios").where("pin", "==", targetPin).get();
-        if (snapshot.empty) throw "EL DESTINATARIO NO EXISTE";
+        if (snapshot.empty) throw "ID NO EXISTE";
         
         const destDoc = snapshot.docs[0];
         const myRef = db.collection("usuarios").doc(myDocId);
 
         await db.runTransaction(async (t) => {
             const me = await t.get(myRef);
-            if (me.data().pin.toUpperCase() === targetPin) throw "ERROR EN CUENTA DESTINO";
+            if (me.data().pin.toUpperCase() === targetPin) throw "OPERACIÓN NO PERMITIDA";
             if (me.data().saldo < cant) throw "FONDOS INSUFICIENTES";
             
             t.update(myRef, { saldo: me.data().saldo - cant });
@@ -153,24 +150,22 @@
         msg.innerText = e;
     } finally {
         btn.disabled = false;
-        setTimeout(() => msg.innerText = "", 4000);
+        setTimeout(() => msg.innerText = "", 3000);
     }
   }
 
   function cargarHistorial() {
-    // Escuchamos los últimos 30 movimientos globales (sin orden de servidor para evitar Error de Red)
     db.collection("transferencias").limit(30).onSnapshot(snap => {
         const list = document.getElementById('history-list');
         let misMovimientos = [];
         
-        snap.docs.forEach(doc => {
+        snap.forEach(doc => {
             const t = doc.data();
             if (t.de === myPublicPin || t.para === myPublicPin) {
                 misMovimientos.push(t);
             }
         });
 
-        // ORDENADO MANUAL EN EL DISPOSITIVO (Más reciente arriba)
         misMovimientos.sort((a, b) => b.fecha - a.fecha);
 
         list.innerHTML = "";
@@ -190,7 +185,5 @@
     });
   }
 </script>
-</body>
-</html>
 </body>
 </html>
