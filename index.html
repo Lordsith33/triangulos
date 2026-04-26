@@ -5,12 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Δ CAPITAL">
     <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/e/ec/Regular_triangle.svg"> 
     <title>Δ CAPITAL</title>
     <style>
         :root { --gold: #d4af37; --bg-dark: #121212; --bg-card: #1e1e1e; --text: #eaeaea; --sub-text: #aaaaaa; --admin: #51cf66; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg-dark); color: var(--text); margin: 0; display: flex; justify-content: center; padding: 20px; box-sizing: border-box; min-height: 100vh; }
+        body { font-family: -apple-system, sans-serif; background-color: var(--bg-dark); color: var(--text); margin: 0; display: flex; justify-content: center; padding: 20px; box-sizing: border-box; min-height: 100vh; }
         .container { width: 100%; max-width: 400px; }
         .box { background: var(--bg-card); padding: 30px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.05); }
         h2 { color: var(--gold); margin: 0; font-weight: 800; letter-spacing: 2px; }
@@ -29,11 +28,166 @@
 <div class="container">
     <div class="box" id="login-box">
         <h2 style="margin-bottom:10px">Δ CAPITAL</h2>
-        <p style="color:var(--sub-text); font-size:0.8em">PORTAL FINANCIERO PRIVADO</p>
         <input type="password" id="access-id" placeholder="CÓDIGO DE ACCESO">
         <button onclick="login()">ENTRAR</button>
     </div>
 
+    <div class="box admin-box hidden" id="admin-panel">
+        <h3 style="color:var(--admin); margin:0; font-size: 0.8em;">CONTROL CENTRAL</h3>
+        <input type="number" id="admin-amount" placeholder="CANTIDAD A INYECTAR">
+        <button onclick="injectMoney()" style="background:var(--admin); margin-bottom: 10px;">GENERAR Δ</button>
+    </div>
+
+    <div class="box hidden" id="main-box">
+        <div style="display:flex; justify-content:space-between; align-items:center">
+            <span id="user-name" style="font-weight:bold; color:var(--gold)"></span>
+            <span id="public-id-display" style="font-size:0.8em; opacity:0.7"></span>
+        </div>
+        <div class="balance"><span id="user-balance">0</span><small style="font-size:0.4em"> Δ</small></div>
+        <input type="text" id="dest-public-id" placeholder="ID PÚBLICO DESTINARIO">
+        <input type="number" id="amount" placeholder="CANTIDAD Δ">
+        <button onclick="transferir()" id="btn-send">ENVIAR</button>
+        <p id="msg"></p>
+    </div>
+
+    <div class="box admin-box hidden" id="market-monitor">
+        <h4 style="color:var(--admin); margin:0 0 10px 0; font-size:0.8em;">MONITOR GLOBAL</h4>
+        <div id="all-history-list" style="text-align:left; font-size: 0.75em;"></div>
+    </div>
+
+    <div class="box hidden" id="history-box" style="text-align:left">
+        <h4 style="color:var(--gold); margin:0 0 15px 0; font-size:0.8em;">MIS MOVIMIENTOS</h4>
+        <div id="history-list"></div>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBKYhc7yd_rzuaalZSOuu8ER7QMD1PW-cA",
+    authDomain: "banco-triangulos.firebaseapp.com",
+    projectId: "banco-triangulos",
+    storageBucket: "banco-triangulos.firebasestorage.app",
+    messagingSenderId: "694080442853",
+    appId: "1:694080442853:web:2fe514cecf9800bbe69f0c"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  let myDocId = ""; let myPublicPin = ""; let isAdmin = false;
+
+  async function login() {
+    const idEntrada = document.getElementById('access-id').value.trim();
+    if (!idEntrada) return;
+    if(idEntrada.toUpperCase() === "LS33") isAdmin = true;
+
+    try {
+        const userDoc = await db.collection("usuarios").doc(idEntrada).get();
+        if (userDoc.exists) {
+            myDocId = idEntrada;
+            myPublicPin = userDoc.data().pin;
+            document.getElementById('login-box').classList.add('hidden');
+            document.getElementById('main-box').classList.remove('hidden');
+            document.getElementById('history-box').classList.remove('hidden');
+            
+            if(isAdmin) {
+                document.getElementById('admin-panel').classList.remove('hidden');
+                document.getElementById('market-monitor').classList.remove('hidden');
+                document.getElementById('user-name').innerHTML = userDoc.data().nombre.toUpperCase() + ' <span class="admin-tag">ADMIN</span>';
+                cargarMonitorGlobal();
+            } else {
+                document.getElementById('user-name').innerText = userDoc.data().nombre.toUpperCase();
+            }
+
+            document.getElementById('public-id-display').innerText = "ID: " + myPublicPin;
+            db.collection("usuarios").doc(myDocId).onSnapshot(doc => {
+                if(doc.exists) document.getElementById('user-balance').innerText = doc.data().saldo;
+            });
+            cargarHistorial();
+        } else { alert("CÓDIGO ERRÓNEO"); }
+    } catch (e) { alert("ERROR DE RED: Limpia caché y reintenta."); }
+  }
+
+  async function injectMoney() {
+    const cant = parseInt(document.getElementById('admin-amount').value);
+    if(isNaN(cant)) return;
+    const ref = db.collection("usuarios").doc(myDocId);
+    const doc = await ref.get();
+    await ref.update({ saldo: doc.data().saldo + cant });
+    document.getElementById('admin-amount').value = "";
+    alert("Capital inyectado");
+  }
+
+  function cargarMonitorGlobal() {
+      // TRUCO: Quitamos el orderBy para que no de error en el móvil
+      db.collection("transferencias").limit(20).onSnapshot(snap => {
+          const monitor = document.getElementById('all-history-list');
+          let transas = [];
+          snap.forEach(doc => transas.push(doc.data()));
+          
+          // Ordenamos aquí en el móvil
+          transas.sort((a,b) => b.fecha - a.fecha);
+          
+          monitor.innerHTML = "";
+          transas.forEach(t => {
+              monitor.innerHTML += `<div style="padding:5px 0; border-bottom:1px solid #333">
+                  <span style="color:var(--admin)">${t.de}</span> ➔ <span style="color:var(--gold)">${t.para}</span>: <b>${t.cantidad}</b>
+              </div>`;
+          });
+      });
+  }
+
+  async function transferir() {
+    const targetPin = document.getElementById('dest-public-id').value.trim().toUpperCase();
+    const cant = parseInt(document.getElementById('amount').value);
+    if (!targetPin || isNaN(cant) || cant <= 0) return;
+    document.getElementById('btn-send').disabled = true;
+
+    try {
+        const snapshot = await db.collection("usuarios").where("pin", "==", targetPin).get();
+        if (snapshot.empty) throw "ID INEXISTENTE";
+        const destDoc = snapshot.docs[0];
+        const myRef = db.collection("usuarios").doc(myDocId);
+
+        await db.runTransaction(async (t) => {
+            const me = await t.get(myRef);
+            if (me.data().saldo < cant) throw "SIN SALDO";
+            t.update(myRef, { saldo: me.data().saldo - cant });
+            t.update(destDoc.ref, { saldo: destDoc.data().saldo + cant });
+            t.set(db.collection("transferencias").doc(), {
+                de: myPublicPin, para: targetPin, cantidad: cant, fecha: Date.now()
+            });
+        });
+        document.getElementById('amount').value = "";
+        document.getElementById('msg').innerText = "ENVIADO";
+    } catch (e) { alert(e); } 
+    finally { document.getElementById('btn-send').disabled = false; }
+  }
+
+  function cargarHistorial() {
+    db.collection("transferencias").limit(20).onSnapshot(snap => {
+        const list = document.getElementById('history-list');
+        let misMovs = [];
+        snap.forEach(doc => {
+            const d = doc.data();
+            if (d.de === myPublicPin || d.para === myPublicPin) misMovs.push(d);
+        });
+        misMovs.sort((a,b) => b.fecha - a.fecha);
+        list.innerHTML = "";
+        misMovs.forEach(t => {
+            const soyYo = t.de === myPublicPin;
+            list.innerHTML += `<div class="history-item">
+                <span>${soyYo ? 'A: ' + t.para : 'DE: ' + t.de}</span>
+                <span class="${soyYo ? 'error' : 'success'}">${soyYo ? '-' : '+'}${t.cantidad}</span>
+            </div>`;
+        });
+    });
+  }
+</script>
+</body>
+</html>
     <div class="box admin-box hidden" id="admin-panel">
         <h3 style="color:var(--admin); margin:0; font-size: 0.8em;">CONTROL CENTRAL DE MERCADO</h3>
         <input type="number" id="admin-amount" placeholder="CANTIDAD A INYECTAR">
